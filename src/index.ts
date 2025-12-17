@@ -33,7 +33,7 @@ const server = new McpServer({
 function registerGetTicker(server: McpServer) {
   server.tool(
     'get_ticker',
-    'Get ticker data for a trading pair',
+    '指定ペアのティッカー情報を取得。24h変動率・出来高・スプレッド等を日本語で整形出力。',
     {
       pair: z.string().regex(pairRegex).describe('Trading pair (e.g., btc_jpy, eth_jpy)'),
     },
@@ -121,7 +121,7 @@ const TICKERS_CACHE_TTL = 3000;
 function registerGetTickers(server: McpServer) {
   server.tool(
     'get_tickers',
-    'Get ticker data for all trading pairs',
+    '全ペアのティッカー情報を一括取得。market=jpy でJPYペアのみ。キャッシュTTL=3s。',
     {
       market: z.enum(['all', 'jpy']).default('all').describe('Market filter: all or jpy'),
     },
@@ -198,7 +198,11 @@ let tickersJpyCache: { ts: number; data: NormalizedTicker[] } | null = null;
 const TICKERS_JPY_CACHE_TTL = 10000;
 
 function registerGetTickersJpy(server: McpServer) {
-  server.tool('get_tickers_jpy', 'Get ticker data for JPY trading pairs only', {}, async () => {
+  server.tool(
+    'get_tickers_jpy',
+    '全JPYペアのティッカー情報を取得。24h変動率付き。view=ranked でランキング表示可。キャッシュTTL=10s。',
+    {},
+    async () => {
     const now = Date.now();
 
     // キャッシュチェック
@@ -273,7 +277,7 @@ const YEARLY_TYPES = new Set(['4hour', '8hour', '12hour', '1day', '1week', '1mon
 function registerGetCandles(server: McpServer) {
   server.tool(
     'get_candles',
-    'Get candlestick (OHLCV) data for a trading pair',
+    'ローソク足データ取得。date: 1month→YYYY、他→YYYYMMDD。最新limit本を返却。例: { isoTime, open, high, low, close, volume }',
     {
       pair: z.string().regex(pairRegex).describe('Trading pair (e.g., btc_jpy)'),
       type: z.enum(CANDLE_TYPES).default('1day').describe('Candle type/timeframe'),
@@ -361,7 +365,7 @@ function registerGetCandles(server: McpServer) {
 function registerGetOrderbook(server: McpServer) {
   server.tool(
     'get_orderbook',
-    'Get order book (bid/ask) for a trading pair',
+    '板情報取得。topN(1-200)で層数指定。ベストBid/Ask・スプレッド・累積数量を算出。',
     {
       pair: z.string().regex(pairRegex).describe('Trading pair (e.g., btc_jpy)'),
       topN: z.number().min(1).max(200).default(20).describe('Number of price levels to return'),
@@ -453,7 +457,7 @@ function registerGetOrderbook(server: McpServer) {
 function registerGetDepth(server: McpServer) {
   server.tool(
     'get_depth',
-    'Get full order book depth for a trading pair',
+    '板深度（全層）取得。maxLevelsで層数制限。板壁ゾーン自動推定付き。',
     {
       pair: z.string().regex(pairRegex).describe('Trading pair (e.g., btc_jpy)'),
       maxLevels: z.number().min(1).max(500).default(200).describe('Maximum number of price levels'),
@@ -513,7 +517,7 @@ function registerGetDepth(server: McpServer) {
 function registerGetTransactions(server: McpServer) {
   server.tool(
     'get_transactions',
-    'Get recent transactions for a trading pair',
+    '直近約定履歴取得。買い/売り件数と比率を算出。フィルタ（minAmount等）対応。',
     {
       pair: z.string().regex(pairRegex).describe('Trading pair (e.g., btc_jpy)'),
       limit: z.number().min(1).max(1000).default(100).describe('Number of transactions to return'),
