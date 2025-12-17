@@ -16,24 +16,6 @@ export interface TickerResponse {
 }
 
 /**
- * /tickers APIレスポンス
- */
-export interface TickersResponse {
-  success: number;
-  data: Array<{
-    pair: string;
-    sell: string;
-    buy: string;
-    high: string;
-    low: string;
-    open: string;
-    last: string;
-    vol: string;
-    timestamp: number;
-  }>;
-}
-
-/**
  * /tickers_jpy APIレスポンス
  */
 export interface TickersJpyResponse {
