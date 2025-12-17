@@ -15,7 +15,6 @@ import {
   NormalizedTransaction,
   TickerResponse,
   TickersJpyResponse,
-  TickersResponse,
   TransactionsResponse,
 } from './types.js';
 import { toIsoTime } from './utils/datetime.js';
@@ -103,85 +102,6 @@ function registerGetTicker(server: McpServer) {
         return {
           content: [{ type: 'text', text: lines.join('\n') }],
           structuredContent: { raw: json, normalized },
-        };
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : 'ネットワークエラー';
-        return { content: [{ type: 'text', text: `エラー: ${msg}` }] };
-      }
-    },
-  );
-}
-
-// ============================================================
-// get_tickers - 全ペアのティッカー情報を一括取得
-// ============================================================
-const tickersCache: { fetchedAt: number; items: NormalizedTicker[] } | null = null;
-const TICKERS_CACHE_TTL = 3000;
-
-function registerGetTickers(server: McpServer) {
-  server.tool(
-    'get_tickers',
-    '全ペアのティッカー情報を一括取得。market=jpy でJPYペアのみ。キャッシュTTL=3s。',
-    {
-      market: z.enum(['all', 'jpy']).default('all').describe('Market filter: all or jpy'),
-    },
-    async ({ market }) => {
-      try {
-        const json = await fetchJson<TickersResponse>(`${BITBANK_API_BASE}/tickers`, { timeoutMs: 5000 });
-
-        if (!json || json.success !== 1 || !Array.isArray(json.data)) {
-          return { content: [{ type: 'text', text: 'Failed to retrieve tickers data' }] };
-        }
-
-        let items = json.data.map((d) => {
-          const pair = String(d.pair);
-          const last = Number(d.last);
-          const open = Number(d.open);
-          const volume = Number(d.vol);
-          const change24hPct = open > 0 ? Number((((last - open) / open) * 100).toFixed(2)) : null;
-          const vol24hJpy = pair.includes('jpy') ? Math.round(last * volume) : null;
-
-          return {
-            pair,
-            last,
-            buy: Number(d.buy),
-            sell: Number(d.sell),
-            open,
-            high: Number(d.high),
-            low: Number(d.low),
-            volume,
-            timestamp: d.timestamp,
-            isoTime: toIsoTime(d.timestamp),
-            change24hPct,
-            vol24hJpy,
-          } as NormalizedTicker;
-        });
-
-        // マーケットフィルタ
-        if (market === 'jpy') {
-          items = items.filter((x) => x.pair.endsWith('_jpy'));
-        }
-
-        // サマリ生成
-        const lines: string[] = [];
-        lines.push(`全${items.length}ペア取得`);
-        lines.push('');
-
-        // 上位5件を表示
-        for (const item of items.slice(0, 5)) {
-          const isJpy = item.pair.includes('jpy');
-          const priceStr = formatPrice(item.last, isJpy);
-          const changeStr = formatChange(item.change24hPct ?? null);
-          lines.push(`${formatPair(item.pair)}: ${priceStr} (${changeStr})`);
-        }
-
-        if (items.length > 5) {
-          lines.push(`... 他${items.length - 5}ペア`);
-        }
-
-        return {
-          content: [{ type: 'text', text: lines.join('\n') }],
-          structuredContent: { items, meta: { market, count: items.length, fetchedAt: new Date().toISOString() } },
         };
       } catch (e) {
         const msg = e instanceof Error ? e.message : 'ネットワークエラー';
@@ -593,7 +513,6 @@ function registerGetTransactions(server: McpServer) {
 // ツール登録
 // ============================================================
 registerGetTicker(server);
-registerGetTickers(server);
 registerGetTickersJpy(server);
 registerGetCandles(server);
 registerGetOrderbook(server);
