@@ -280,99 +280,7 @@ function registerGetCandles(server: McpServer) {
 }
 
 // ============================================================
-// get_orderbook - 板情報（上位N層）を取得
-// ============================================================
-function registerGetOrderbook(server: McpServer) {
-  server.tool(
-    'get_orderbook',
-    '板情報取得。topN(1-200)で層数指定。ベストBid/Ask・スプレッド・累積数量を算出。',
-    {
-      pair: z.string().regex(pairRegex).describe('Trading pair (e.g., btc_jpy)'),
-      topN: z.number().min(1).max(200).default(20).describe('Number of price levels to return'),
-    },
-    async ({ pair, topN }) => {
-      const chk = ensurePair(pair);
-      if (!chk.ok) {
-        return { content: [{ type: 'text', text: chk.error.message }] };
-      }
-
-      try {
-        const url = `${BITBANK_API_BASE}/${chk.pair}/depth`;
-        const json = await fetchJson<DepthResponse>(url, { timeoutMs: 3000 });
-
-        if (!json || json.success !== 1) {
-          return { content: [{ type: 'text', text: 'Failed to retrieve orderbook data' }] };
-        }
-
-        const d = json.data;
-
-        // 累積サイズを計算しながら変換
-        const toLevels = (arr: Array<[string, string]>): NormalizedDepthEntry[] => {
-          let cumTotal = 0;
-          return arr.slice(0, topN).map(([price, amount]) => {
-            const p = Number(price);
-            const a = Number(amount);
-            cumTotal += a;
-            return { price: p, amount: a, total: Number(cumTotal.toFixed(8)) };
-          });
-        };
-
-        const bids = toLevels(d.bids);
-        const asks = toLevels(d.asks);
-
-        const bestBid = bids[0]?.price ?? null;
-        const bestAsk = asks[0]?.price ?? null;
-        const spread = bestBid && bestAsk ? bestAsk - bestBid : null;
-        const mid = bestBid && bestAsk ? (bestBid + bestAsk) / 2 : null;
-
-        const isJpy = chk.pair.includes('jpy');
-        const baseCurrency = chk.pair.split('_')[0]?.toUpperCase() ?? '';
-
-        // サマリ生成
-        const lines: string[] = [];
-        lines.push(`${formatPair(chk.pair)} 板情報 (上位${topN}層)`);
-        lines.push(`中値: ${mid ? formatPrice(mid, isJpy) : 'N/A'}`);
-        lines.push(`スプレッド: ${spread ? formatPrice(spread, isJpy) : 'N/A'}`);
-        lines.push('');
-        lines.push(`🟢 買い板 (Bids): ${bids.length}層`);
-        for (const b of bids.slice(0, 5)) {
-          lines.push(`  ${formatPrice(b.price, isJpy)} - ${b.amount.toFixed(4)} ${baseCurrency}`);
-        }
-        if (bids.length > 5) lines.push(`  ... 他${bids.length - 5}層`);
-        lines.push('');
-        lines.push(`🔴 売り板 (Asks): ${asks.length}層`);
-        for (const a of asks.slice(0, 5)) {
-          lines.push(`  ${formatPrice(a.price, isJpy)} - ${a.amount.toFixed(4)} ${baseCurrency}`);
-        }
-        if (asks.length > 5) lines.push(`  ... 他${asks.length - 5}層`);
-
-        return {
-          content: [{ type: 'text', text: lines.join('\n') }],
-          structuredContent: {
-            normalized: {
-              pair: chk.pair,
-              bestBid,
-              bestAsk,
-              spread,
-              mid,
-              bids,
-              asks,
-              timestamp: d.timestamp,
-              isoTime: toIsoTime(d.timestamp),
-            },
-            meta: { pair: chk.pair, topN, count: bids.length + asks.length },
-          },
-        };
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : 'ネットワークエラー';
-        return { content: [{ type: 'text', text: `エラー: ${msg}` }] };
-      }
-    },
-  );
-}
-
-// ============================================================
-// get_depth - 板深度（詳細版）を取得
+// get_depth - 板情報（生データ）を取得
 // ============================================================
 function registerGetDepth(server: McpServer) {
   server.tool(
@@ -515,7 +423,6 @@ function registerGetTransactions(server: McpServer) {
 registerGetTicker(server);
 registerGetTickersJpy(server);
 registerGetCandles(server);
-registerGetOrderbook(server);
 registerGetDepth(server);
 registerGetTransactions(server);
 
