@@ -32,7 +32,7 @@ const server = new McpServer({
 function registerGetTicker(server: McpServer) {
   server.tool(
     'get_ticker',
-    '指定ペアのティッカー情報を取得。24h変動率・出来高・スプレッド等を日本語で整形出力。',
+    '単一ペアのティッカーを取得（/ticker）。価格・出来高・24h高安。',
     {
       pair: z.string().regex(pairRegex).describe('Trading pair (e.g., btc_jpy, eth_jpy)'),
     },
@@ -120,7 +120,7 @@ const TICKERS_JPY_CACHE_TTL = 10000;
 function registerGetTickersJpy(server: McpServer) {
   server.tool(
     'get_tickers_jpy',
-    '全JPYペアのティッカー情報を取得。24h変動率付き。view=ranked でランキング表示可。キャッシュTTL=10s。',
+    '全JPYペアのティッカーを取得（/tickers_jpy）。24h変動率付き。キャッシュ10秒。',
     {},
     async () => {
     const now = Date.now();
@@ -197,7 +197,7 @@ const YEARLY_TYPES = new Set(['4hour', '8hour', '12hour', '1day', '1week', '1mon
 function registerGetCandles(server: McpServer) {
   server.tool(
     'get_candles',
-    'ローソク足データ取得。date: 1month→YYYY、他→YYYYMMDD。最新limit本を返却。例: { isoTime, open, high, low, close, volume }',
+    'ローソク足を取得（/candlestick）。OHLCVデータ。date: 1min〜1hour→YYYYMMDD, 4hour以上→YYYY。limit で本数指定。',
     {
       pair: z.string().regex(pairRegex).describe('Trading pair (e.g., btc_jpy)'),
       type: z.enum(CANDLE_TYPES).default('1day').describe('Candle type/timeframe'),
@@ -285,7 +285,7 @@ function registerGetCandles(server: McpServer) {
 function registerGetDepth(server: McpServer) {
   server.tool(
     'get_depth',
-    '板深度（全層）取得。maxLevelsで層数制限。板壁ゾーン自動推定付き。',
+    '板の生データ取得（/depth API直接）。maxLevelsで層数制限。チャート描画・差分計算・壁検出用。',
     {
       pair: z.string().regex(pairRegex).describe('Trading pair (e.g., btc_jpy)'),
       maxLevels: z.number().min(1).max(500).default(200).describe('Maximum number of price levels'),
@@ -345,7 +345,7 @@ function registerGetDepth(server: McpServer) {
 function registerGetTransactions(server: McpServer) {
   server.tool(
     'get_transactions',
-    '直近約定履歴取得。買い/売り件数と比率を算出。フィルタ（minAmount等）対応。',
+    '約定履歴を取得（/transactions）。直近の約定データ。日付指定可。買い/売り比率を算出。',
     {
       pair: z.string().regex(pairRegex).describe('Trading pair (e.g., btc_jpy)'),
       limit: z.number().min(1).max(1000).default(100).describe('Number of transactions to return'),
