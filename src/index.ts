@@ -285,7 +285,7 @@ function registerGetCandles(server: McpServer) {
 function registerGetDepth(server: McpServer) {
   server.tool(
     'get_depth',
-    '板の生データ取得（/depth API直接）。maxLevelsで層数制限。チャート描画・差分計算・壁検出用。',
+    '板の生データ取得（/depth API直接）。差分計算・壁検出・圧力分析の元データ。maxLevelsで層数制限。',
     {
       pair: z.string().regex(pairRegex).describe('Trading pair (e.g., btc_jpy)'),
       maxLevels: z.number().min(1).max(500).default(200).describe('Maximum number of price levels'),
